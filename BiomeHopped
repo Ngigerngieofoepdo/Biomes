@@ -1,0 +1,142 @@
+local RS = game:GetService("ReplicatedStorage")
+local Http = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Player = Players.LocalPlayer
+
+local WEBHOOK = "https://discord.com/api/webhooks/1433880223782539425/OYPyzIyXrWZt2QSONtp0Q8IpbAkPfuRcpzqnGvePccZFojoLg9yOjB317PpqIczUuw-b"
+local Remote = RS:WaitForChild("Remotes"):WaitForChild("Message")
+
+local RARE_TRIGGERS = {
+    ["Your actions created an imbalance in reality."] = "Cultist Legion (1/7500)",
+    ["The world is being shrouded in darkness!"] = "Shrouding Darkness (1/5000)",
+    ["A bright light is blinding the world!"] = "Blinding Light (1/5000)",
+    ["The void is infiltrating the world!"] = "Void Infiltration (1/2500)",
+    ["The angels of the sky are descending!"] = "Angel's Descent (1/2500)",
+    ["The war between holy and unholy has started!"] = "Holy vs Unholy War (1/1125)",
+    ["The war between pure and corrupt has started!"] = "Pure vs Corrupt War (1/750)"
+}
+
+local killAuraPaused = false
+local waitingForBossDefeat = false
+
+spawn(function()
+    getgenv().G = true
+    getgenv().Creator = 'https://discord.gg/B3HqPPzFYr - HalloweenGaster'
+    
+    while getgenv().G and getgenv().Creator == 'https://discord.gg/B3HqPPzFYr - HalloweenGaster' do
+        wait(0.9)
+        
+        if not killAuraPaused then
+            sethiddenproperty(Player, "SimulationRadius", 112412400000)
+            sethiddenproperty(Player, "MaxSimulationRadius", 112412400000)
+            
+            for _, d in pairs(Workspace:GetDescendants()) do
+                if d.ClassName == "Humanoid" and d.Parent.Name ~= Player.Name then
+                    d.Health = 0
+                end
+            end
+        end
+    end
+end)
+
+local function setSafeRadius()
+    sethiddenproperty(Player, "SimulationRadius", 100)
+    sethiddenproperty(Player, "MaxSimulationRadius", 100)
+end
+
+local function instantControllerKill()
+    sethiddenproperty(Player, "SimulationRadius", 112412400000)
+    sethiddenproperty(Player, "MaxSimulationRadius", 112412400000)
+    
+    for _, d in pairs(Workspace:GetDescendants()) do
+        if d.ClassName == "Humanoid" and d.Parent.Name ~= Player.Name then
+            d.Health = 0
+        end
+    end
+    
+    task.delay(0.5, setSafeRadius)
+end
+
+local function sendWebhook(content, title, desc, col)
+    local payload = {
+        content = content,
+        embeds = {{
+            title = title,
+            description = desc,
+            color = col,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            footer = { text = "BCWO Main Path • cobalt" }
+        }}
+    }
+    request({
+        Url = WEBHOOK,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = Http:JSONEncode(payload)
+    })
+end
+
+Remote.OnClientEvent:Connect(function(...)
+    local args = {...}
+    local msg, color = nil, nil
+
+    for _, v in args do
+        if typeof(v) == "string" and #v > 5 then
+            msg = v
+        elseif typeof(v) == "Color3" then
+            color = v
+        end
+    end
+    if not msg then return end
+
+    local lower = msg:lower()
+
+    if lower:find("controller") and lower:find("spawned") then
+        task.spawn(instantControllerKill)
+        sendWebhook("**CONTROLLER DEAD** " .. Player.Name, "Controller Eliminated", "`" .. msg .. "`", 15158332)
+        return
+    end
+
+    if lower:find("has obtained") or lower:find("tree") or lower:find("%%") then
+        return
+    end
+
+    for trigger, name in pairs(RARE_TRIGGERS) do
+        if lower:find(trigger:lower()) then
+            killAuraPaused = true
+            waitingForBossDefeat = true
+            
+            local r = math.floor(color.R * 255 + 0.5)
+            local g = math.floor(color.G * 255 + 0.5)
+            local b = math.floor(color.B * 255 + 0.5)
+            
+            sendWebhook(
+                "@everyone **" .. name .. "** SPAWNED! **" .. Player.Name .. "**",
+                msg,
+                string.format("**RGB:** `%d %d %d`\n**Aura:** PAUSED", r, g, b),
+                r * 65536 + g * 256 + b
+            )
+            return
+        end
+    end
+
+    if waitingForBossDefeat and (lower:find("has been defeated") or lower:find("defeated") or lower:find("killing blow")) then
+        killAuraPaused = false
+        waitingForBossDefeat = false
+        sendWebhook("**AURA RESUMED**", "Boss Defeated", "`" .. msg .. "` → Kill Aura ON", 65280)
+        return
+    end
+end)
+
+spawn(function()
+    while true do
+        wait(600)
+        if killAuraPaused then
+            killAuraPaused = false
+            waitingForBossDefeat = false
+        end
+    end
+end)
+
+sendWebhook("**LOADED**", "Kill Aura + Biome Monitor", "Always-on aura, pauses on rare biomes", 65280)
