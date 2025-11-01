@@ -8,7 +8,7 @@ local WEBHOOK = "https://discord.com/api/webhooks/1433880223782539425/OYPyzIyXrW
 local Remote = RS:WaitForChild("Remotes"):WaitForChild("Message")
 
 local RARE_TRIGGERS = {
-    ["Your actions created an imbalance in reality."] = "Cultist Legion (1/7500)",
+    ["Your actions have brought imbalances to reality."] = "Cultist Legion (1/7500)",
     ["The world is being shrouded in darkness!"] = "Shrouding Darkness (1/5000)",
     ["A bright light is blinding the world!"] = "Blinding Light (1/5000)",
     ["The void is infiltrating the world!"] = "Void Infiltration (1/2500)",
@@ -20,12 +20,13 @@ local RARE_TRIGGERS = {
 local killAuraPaused = false
 local waitingForNormal = false
 
+-- KILL AURA LOOP
 spawn(function()
     getgenv().G = true
     getgenv().Creator = 'https://discord.gg/B3HqPPzFYr - HalloweenGaster'
     
     while getgenv().G and getgenv().Creator == 'https://discord.gg/B3HqPPzFYr - HalloweenGaster' do
-        wait(0.9)
+        task.wait(0.9)
         
         if not killAuraPaused then
             sethiddenproperty(Player, "SimulationRadius", 112412400000)
@@ -40,11 +41,13 @@ spawn(function()
     end
 end)
 
+-- SAFE RADIUS
 local function setSafeRadius()
     sethiddenproperty(Player, "SimulationRadius", 100)
     sethiddenproperty(Player, "MaxSimulationRadius", 100)
 end
 
+-- INSTANT CONTROLLER KILL
 local function instantControllerKill()
     sethiddenproperty(Player, "SimulationRadius", 112412400000)
     sethiddenproperty(Player, "MaxSimulationRadius", 112412400000)
@@ -58,6 +61,7 @@ local function instantControllerKill()
     task.delay(0.5, setSafeRadius)
 end
 
+-- WEBHOOK SENDER
 local function sendWebhook(content, title, desc, col)
     local payload = {
         content = content,
@@ -69,14 +73,17 @@ local function sendWebhook(content, title, desc, col)
             footer = { text = "BCWO Main Path • cobalt" }
         }}
     }
-    request({
-        Url = WEBHOOK,
-        Method = "POST",
-        Headers = {["Content-Type"] = "application/json"},
-        Body = Http:JSONEncode(payload)
-    })
+    pcall(function()
+        request({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = Http:JSONEncode(payload)
+        })
+    end)
 end
 
+-- MESSAGE LISTENER
 Remote.OnClientEvent:Connect(function(...)
     local args = {...}
     local msg, color = nil, nil
@@ -92,16 +99,30 @@ Remote.OnClientEvent:Connect(function(...)
 
     local lower = msg:lower()
 
+    -- === IRRADIATED BOSS DETECTION ===
+    if lower:find("the island has been irradiated by an unknown wave of energy") then
+        sendWebhook(
+            "@everyone **DANGER: Cannot kill this boss, come help!**",
+            "IRRADIATED ISLAND BOSS",
+            "`" .. msg .. "`\n**Player:** " .. Player.Name .. "\n**ACTION NEEDED NOW!**",
+            16711680 -- Bright red
+        )
+        return
+    end
+
+    -- === CONTROLLER SPAWN ===
     if lower:find("controller") and lower:find("spawned") then
         task.spawn(instantControllerKill)
         sendWebhook("**CONTROLLER DEAD** " .. Player.Name, "Controller Eliminated", "`" .. msg .. "`", 15158332)
         return
     end
 
+    -- === IGNORE USELESS MESSAGES ===
     if lower:find("has obtained") or lower:find("tree") or lower:find("%%") then
         return
     end
 
+    -- === RARE BIOME DETECTION ===
     for trigger, name in pairs(RARE_TRIGGERS) do
         if lower:find(trigger:lower()) then
             killAuraPaused = true
@@ -121,6 +142,7 @@ Remote.OnClientEvent:Connect(function(...)
         end
     end
 
+    -- === WORLD BACK TO NORMAL ===
     if waitingForNormal and lower:find("the world has returned to normal") then
         killAuraPaused = false
         waitingForNormal = false
@@ -129,14 +151,17 @@ Remote.OnClientEvent:Connect(function(...)
     end
 end)
 
+-- AUTO-RESUME AFTER 10 MINUTES
 spawn(function()
     while true do
-        wait(600)
+        task.wait(600)
         if killAuraPaused then
             killAuraPaused = false
             waitingForNormal = false
+            print("Auto-resumed aura after 10 min timeout.")
         end
     end
 end)
 
+-- ON LOAD
 sendWebhook("**LOADED**", "Kill Aura + Biome Monitor", "Always-on aura, pauses on rare biomes", 65280)
