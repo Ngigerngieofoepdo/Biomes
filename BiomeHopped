@@ -18,7 +18,7 @@ local RARE_TRIGGERS = {
 }
 
 local killAuraPaused = false
-local waitingForBossDefeat = false
+local waitingForNormal = false
 
 spawn(function()
     getgenv().G = true
@@ -105,7 +105,7 @@ Remote.OnClientEvent:Connect(function(...)
     for trigger, name in pairs(RARE_TRIGGERS) do
         if lower:find(trigger:lower()) then
             killAuraPaused = true
-            waitingForBossDefeat = true
+            waitingForNormal = true
             
             local r = math.floor(color.R * 255 + 0.5)
             local g = math.floor(color.G * 255 + 0.5)
@@ -121,10 +121,10 @@ Remote.OnClientEvent:Connect(function(...)
         end
     end
 
-    if waitingForBossDefeat and (lower:find("has been defeated") or lower:find("defeated") or lower:find("killing blow")) then
+    if waitingForNormal and lower:find("the world has returned to normal") then
         killAuraPaused = false
-        waitingForBossDefeat = false
-        sendWebhook("**AURA RESUMED**", "Boss Defeated", "`" .. msg .. "` → Kill Aura ON", 65280)
+        waitingForNormal = false
+        sendWebhook("**AURA RESUMED**", "World Normal", "`" .. msg .. "` → Kill Aura ON", 65280)
         return
     end
 end)
@@ -134,7 +134,7 @@ spawn(function()
         wait(600)
         if killAuraPaused then
             killAuraPaused = false
-            waitingForBossDefeat = false
+            waitingForNormal = false
         end
     end
 end)
